@@ -1,0 +1,11 @@
+### Создать нового пользователя
+POST http://localhost:8080/users
+Content-Type: application/json
+
+{
+  "id" : 1,
+  "name": "Artem Postan"
+}
+
+### Получить список всех пользователей
+GET http://localhost:8080/users
