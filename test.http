@@ -3,7 +3,7 @@ POST http://localhost:8080/users
 Content-Type: application/json
 
 {
-  "id" : 1,
+  "id" : 132,
   "name": "Artem Postan"
 }
 
