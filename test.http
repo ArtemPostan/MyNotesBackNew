@@ -1,11 +1,32 @@
-### Создать нового пользователя
-POST http://localhost:8080/users
+POST http://localhost:8080/api/auth/register
 Content-Type: application/json
 
 {
-  "id" : 132,
+  "email": "artem@example5.com",
+  "password": "my-secret-password",
   "name": "Artem Postan"
 }
+### Залогиниться
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
 
-### Получить список всех пользователей
-GET http://localhost:8080/users
+{
+"email": "artem@example5.com",
+"password": "my-secret-password"
+}
+
+> {% client.global.set("auth_token", response.body.token); %}
+
+
+### Создать заметку
+POST http://localhost:8080/api/notes
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNS5jb20iLCJpYXQiOjE3NzQzNDkxMTgsImV4cCI6MTc3NDQzNTUxOH0.7R3aLnPVRHeNgio9K34ZahWYveQiDsbzecZMsf3uppErE3gwUsUWaXad3ZR3AAb5
+
+{
+  "content": "Моя первая защищенная заметка!"
+}
+
+### Список заметок
+GET http://localhost:8080/api/notes
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNS5jb20iLCJpYXQiOjE3NzQzNDkxMTgsImV4cCI6MTc3NDQzNTUxOH0.7R3aLnPVRHeNgio9K34ZahWYveQiDsbzecZMsf3uppErE3gwUsUWaXad3ZR3AAb5

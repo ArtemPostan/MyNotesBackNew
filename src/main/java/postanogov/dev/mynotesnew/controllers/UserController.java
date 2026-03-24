@@ -1,10 +1,8 @@
 package postanogov.dev.mynotesnew.controllers;
 
 import org.springframework.web.bind.annotation.*;
-import postanogov.dev.mynotesnew.models.User;
+import postanogov.dev.mynotesnew.models.UserEntity;
 import postanogov.dev.mynotesnew.repositories.UserRepository;
-
-import java.util.List;
 
 @CrossOrigin(origins = "*")
 @RestController
@@ -19,14 +17,14 @@ public class UserController {
 
     // Метод для создания пользователя
     @PostMapping
-    public User createUser(@RequestBody User user) {
+    public UserEntity createUser(@RequestBody UserEntity user) {
         // ID сгенерируется автоматически в поле класса User, как мы делали ранее
         return userRepository.save(user);
     }
 
     // Метод для получения всех пользователей (чтобы проверить результат)
     @GetMapping
-    public Iterable<User> getAllUsers() {
+    public Iterable<UserEntity> getAllUsers() {
         return userRepository.findAll();
     }
 }

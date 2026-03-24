@@ -1,7 +1,10 @@
 package postanogov.dev.mynotesnew.repositories;
 
 import org.springframework.data.repository.CrudRepository;
-import postanogov.dev.mynotesnew.models.User;
+import postanogov.dev.mynotesnew.models.UserEntity;
 
-public interface UserRepository extends CrudRepository<User, Long> {
+import java.util.Optional;
+
+public interface UserRepository extends CrudRepository<UserEntity, String> {
+    Optional<UserEntity> findByEmail(String email);
 }
