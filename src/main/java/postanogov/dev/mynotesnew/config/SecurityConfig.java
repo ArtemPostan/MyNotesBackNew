@@ -25,12 +25,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
-                // Указываем наш кастомный бин CORS
+                // 1. Явно включаем CORS перед всеми фильтрами
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. КРИТИЧНО: Разрешаем OPTIONS для всех, чтобы браузер мог проверить права
+                        // Разрешаем OPTIONS запросы (Preflight) без аутентификации
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/notes/**").authenticated()
@@ -45,23 +45,29 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 2. Указываем домен твоего фронтенда (как на скриншоте)
+        // Список должен быть точным
         configuration.setAllowedOrigins(List.of(
                 "https://mynotesfrontend.website.yandexcloud.net",
                 "http://localhost:5173"
         ));
 
-        // Разрешаем все нужные методы
+        // Явно перечисляем методы
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // 3. Разрешаем заголовок Authorization
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Cache-Control"));
+        configuration.setAllowedHeaders(List.of(
+                "X-Auth-Token",
+                "x-auth-token",
+                "Content-Type",
+                "Origin",
+                "Accept"
+        ));
+        configuration.setExposedHeaders(List.of("X-Auth-Token", "x-auth-token"));
 
-        // Разрешаем передачу кук и данных авторизации
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
+        // Используем путь, который точно покроет контроллеры
+        source.registerCorsConfiguration("/api/**", configuration);
         return source;
     }
 }

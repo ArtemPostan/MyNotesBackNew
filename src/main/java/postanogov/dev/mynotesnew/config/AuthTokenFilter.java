@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
+import java.util.Collections;
 
 @Component
 public class AuthTokenFilter extends OncePerRequestFilter {
@@ -23,8 +24,12 @@ public class AuthTokenFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             System.out.println("--- FILTER START ---");
-            String headerAuth = request.getHeader("Authorization");
-            System.out.println("Header: " + headerAuth);
+            String headerAuth = request.getHeader("X-Auth-Token");
+
+            if (headerAuth == null) {
+                headerAuth = request.getHeader("x-auth-token"); // на всякий случай для нижнего регистра
+            }
+            System.out.println("Extracted Header: " + headerAuth);
 
             String jwt = null;
 

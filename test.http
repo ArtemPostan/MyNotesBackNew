@@ -2,7 +2,7 @@ POST http://localhost:8080/api/auth/register
 Content-Type: application/json
 
 {
-  "email": "artem@example5.com",
+  "email": "artem@example7.com",
   "password": "my-secret-password",
   "name": "Artem Postan"
 }
@@ -11,7 +11,7 @@ POST http://localhost:8080/api/auth/login
 Content-Type: application/json
 
 {
-"email": "artem@example5.com",
+"email": "artem@example7.com",
 "password": "my-secret-password"
 }
 
@@ -21,7 +21,7 @@ Content-Type: application/json
 ### Создать заметку
 POST http://localhost:8080/api/notes
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNS5jb20iLCJpYXQiOjE3NzQzNDkxMTgsImV4cCI6MTc3NDQzNTUxOH0.7R3aLnPVRHeNgio9K34ZahWYveQiDsbzecZMsf3uppErE3gwUsUWaXad3ZR3AAb5
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNy5jb20iLCJpYXQiOjE3NzQ0MzA0MjIsImV4cCI6MTc3NDUxNjgyMn0.RpkzpuqrEAAJd9ajarCI3Nh3fiRhHsWWwghENlyA8Y3mhdngb5VKwswqMpp6JuIX
 
 {
   "content": "Моя первая защищенная заметка!"
@@ -29,4 +29,4 @@ Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNS5jb20iL
 
 ### Список заметок
 GET http://localhost:8080/api/notes
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNS5jb20iLCJpYXQiOjE3NzQzNDkxMTgsImV4cCI6MTc3NDQzNTUxOH0.7R3aLnPVRHeNgio9K34ZahWYveQiDsbzecZMsf3uppErE3gwUsUWaXad3ZR3AAb5
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNy5jb20iLCJpYXQiOjE3NzQ0MzA0MjIsImV4cCI6MTc3NDUxNjgyMn0.RpkzpuqrEAAJd9ajarCI3Nh3fiRhHsWWwghENlyA8Y3mhdngb5VKwswqMpp6JuIX
