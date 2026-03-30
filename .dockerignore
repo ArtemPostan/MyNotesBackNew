@@ -4,3 +4,4 @@ target/
 *.iml
 .dockerignore
 Dockerfile
+src/main/resources/application-local.properties
