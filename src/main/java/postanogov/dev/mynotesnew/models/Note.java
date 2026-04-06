@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "notes")
@@ -17,9 +18,7 @@ import java.time.Instant;
 public class Note {
 
     @Id
-    // В YDB для распределенных систем лучше не использовать GenerationType.IDENTITY
-    // Мы будем устанавливать ID вручную или через генератор в сервисе
-    private Long id;
+    private String id = UUID.randomUUID().toString();
 
     // Указываем тип Utf8 для YDB
     @Column(columnDefinition = "Utf8", nullable = false)

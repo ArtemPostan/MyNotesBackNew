@@ -58,4 +58,25 @@ public class NoteController {
         List<Note> notes = noteService.getUserNotesByEmail(email);
         return ResponseEntity.ok(notes);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteNote(@PathVariable String id, Authentication authentication) {
+        String email = authentication.getName();
+
+        try {
+            // Передаем и ID, и email для проверки прав (чтобы юзер не удалил чужую заметку)
+            noteService.deleteNoteByIdAndUserEmail(id, email);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Не удалось удалить заметку: " + e.getMessage());
+        }
+    }
+
+//    @DeleteMapping("/{id}")
+//    public ResponseEntity<?> deleteNote(@PathVariable Long id) {
+//        // ВРЕМЕННО убери Authentication и проверки. Просто верни 200.
+//        System.out.println("DEBUG: Запрос на удаление дошел до контроллера! ID: " + id);
+//        return ResponseEntity.ok("Дошло!");
+//    }
 }

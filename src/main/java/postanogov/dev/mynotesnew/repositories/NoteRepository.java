@@ -8,7 +8,7 @@ import postanogov.dev.mynotesnew.models.UserEntity;
 import java.util.List;
 
 @Repository
-public interface NoteRepository extends JpaRepository<Note, Long> {
+public interface NoteRepository extends JpaRepository<Note, String> {
 
     /**
      * Поиск всех заметок конкретного пользователя.
@@ -21,5 +21,6 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
      * Можно также искать по ID пользователя напрямую, если не хочется тянуть весь объект User.
      */
     List<Note> findAllByUserIdOrderByCreatedAtDesc(String userId);
+
 
 }

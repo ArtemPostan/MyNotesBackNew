@@ -9,6 +9,7 @@ import postanogov.dev.mynotesnew.repositories.NoteRepository;
 import postanogov.dev.mynotesnew.repositories.UserRepository;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -25,7 +26,7 @@ public class NoteService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Note note = Note.builder()
-                .id(ThreadLocalRandom.current().nextLong(1, Long.MAX_VALUE))
+                .id(UUID.randomUUID().toString())
                 .content(content)
                 .user(managedUser) // Типы теперь идеально совпадают
                 .build();
@@ -44,5 +45,19 @@ public class NoteService {
 
         // 2. Ищем заметки по строковому ID пользователя
         return noteRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId());
+    }
+
+    @Transactional
+    public void deleteNoteByIdAndUserEmail(String id, String email) {
+        // Находим заметку
+        Note note = noteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Заметка не найдена с ID: " + id));
+
+        // Проверяем владельца (email в Note должен совпадать с email из токена)
+        if (!note.getUser().getEmail().equals(email)) {
+            throw new RuntimeException("У вас нет прав на удаление этой заметки");
+        }
+
+        noteRepository.delete(note);
     }
 }

@@ -1,7 +1,9 @@
 package postanogov.dev.mynotesnew.controllers;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import postanogov.dev.mynotesnew.models.UserEntity;
 import postanogov.dev.mynotesnew.repositories.UserAuthRepository;
 import postanogov.dev.mynotesnew.config.JwtUtils; // ИМПОРТИРУЕМ НАШ КЛАСС
@@ -29,7 +31,8 @@ public class AuthController {
     public UserEntity register(@RequestBody UserEntity user) {
         // Проверяем, есть ли уже такой пользователь (хорошая практика)
         if (userAuthRepository.findByEmail(user.getEmail()).isPresent()) {
-            throw new RuntimeException("Email уже занят");
+            // Указываем, что это ошибка клиента (400)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email уже занят");
         }
 
         user.setId(UUID.randomUUID().toString());

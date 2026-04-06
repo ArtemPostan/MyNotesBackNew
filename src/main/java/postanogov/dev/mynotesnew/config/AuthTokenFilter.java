@@ -9,6 +9,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
@@ -23,41 +24,32 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            System.out.println("--- FILTER START ---");
             String headerAuth = request.getHeader("X-Auth-Token");
 
-            if (headerAuth == null) {
-                headerAuth = request.getHeader("x-auth-token"); // на всякий случай для нижнего регистра
-            }
-            System.out.println("Extracted Header: " + headerAuth);
-
-            String jwt = null;
-
-            // 1. Извлекаем чистый токен из заголовка
             if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
-                jwt = headerAuth.substring(7); // Отрезаем "Bearer " (7 символов)
-            }
+                String jwt = headerAuth.substring(7);
 
-            // 2. Проверяем его
-            if (jwt != null && jwtUtils.validateToken(jwt)) {
-                String email = jwtUtils.getEmailFromToken(jwt);
-                System.out.println("Token is VALID for: " + email);
+                if (jwtUtils.validateToken(jwt)) {
+                    String email = jwtUtils.getEmailFromToken(jwt);
 
-                // 3. Если валиден — авторизуем в Spring Security
-                UserDetails userDetails = userDetailsService.loadUserByUsername(email);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    // 3. Загружаем пользователя и устанавливаем аутентификацию
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-                authentication.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
-                System.out.println("Token is INVALID or NULL");
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                    // Это "магическая" строка, которая авторизует пользователя в системе
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         } catch (Exception e) {
-            System.out.println("Error in Filter: " + e.getMessage());
+            // Вместо System.out используй логгер или оставь пустым,
+            // так как Spring Security сам вернет 403, если контекст пуст.
+            logger.error("Не удалось установить аутентификацию пользователя: {}");
         }
 
-        // Обязательно идем дальше по цепочке фильтров!
+        // 4. Всегда пропускаем запрос дальше по цепочке
         filterChain.doFilter(request, response);
     }
 }
