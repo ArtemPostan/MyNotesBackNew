@@ -73,10 +73,19 @@ public class NoteController {
         }
     }
 
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<?> deleteNote(@PathVariable Long id) {
-//        // ВРЕМЕННО убери Authentication и проверки. Просто верни 200.
-//        System.out.println("DEBUG: Запрос на удаление дошел до контроллера! ID: " + id);
-//        return ResponseEntity.ok("Дошло!");
-//    }
+    @PatchMapping("/{id}")
+    public ResponseEntity<?> updateNote(
+            @PathVariable String id,
+            @RequestBody Map<String, String> payload,
+            Authentication authentication) {
+
+        String email = authentication.getName();
+        String newContent = payload.get("content");
+
+        noteService.updateNoteContent(id, newContent, email);
+
+        // Возвращаем пустой ответ. Это гарантированно уберет 400 ошибку сериализации
+        return ResponseEntity.noContent().build();
+    }
+
 }

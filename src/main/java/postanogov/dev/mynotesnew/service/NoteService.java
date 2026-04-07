@@ -60,4 +60,19 @@ public class NoteService {
 
         noteRepository.delete(note);
     }
+
+    @Transactional
+    public Note updateNoteContent(String id, String newContent, String email) {
+        // Находим заметку
+        Note note = noteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Заметка не найдена"));
+
+        // Проверяем, что заметка принадлежит текущему пользователю
+        if (!note.getUser().getEmail().equals(email)) {
+            throw new RuntimeException("Нет прав для редактирования этой заметки");
+        }
+
+        note.setContent(newContent);
+        return noteRepository.save(note);
+    }
 }

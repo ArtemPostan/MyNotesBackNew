@@ -52,7 +52,7 @@ public class SecurityConfig {
         ));
 
         // Явно перечисляем методы
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
         configuration.setAllowedHeaders(List.of(
                 "X-Auth-Token",
