@@ -74,7 +74,7 @@ public class NoteController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<?> updateNote(
+    public ResponseEntity<Note> updateNote(
             @PathVariable String id,
             @RequestBody Map<String, String> payload,
             Authentication authentication) {
@@ -82,10 +82,11 @@ public class NoteController {
         String email = authentication.getName();
         String newContent = payload.get("content");
 
-        noteService.updateNoteContent(id, newContent, email);
+        // Вызываем сервис и ПОЛУЧАЕМ обновленный объект
+        Note updatedNote = noteService.updateNoteContent(id, newContent, email);
 
-        // Возвращаем пустой ответ. Это гарантированно уберет 400 ошибку сериализации
-        return ResponseEntity.noContent().build();
+        // Возвращаем объект (статус 200 OK) вместо noContent()
+        return ResponseEntity.ok(updatedNote);
     }
 
 }

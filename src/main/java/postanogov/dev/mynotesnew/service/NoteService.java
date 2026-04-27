@@ -26,7 +26,6 @@ public class NoteService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Note note = Note.builder()
-                .id(UUID.randomUUID().toString())
                 .content(content)
                 .user(managedUser) // Типы теперь идеально совпадают
                 .build();
@@ -63,16 +62,15 @@ public class NoteService {
 
     @Transactional
     public Note updateNoteContent(String id, String newContent, String email) {
-        // Находим заметку
         Note note = noteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Заметка не найдена"));
+                .orElseThrow(() -> new RuntimeException("Заметка не найдена с ID: " + id));
 
-        // Проверяем, что заметка принадлежит текущему пользователю
         if (!note.getUser().getEmail().equals(email)) {
-            throw new RuntimeException("Нет прав для редактирования этой заметки");
+            throw new RuntimeException("Нет прав");
         }
 
         note.setContent(newContent);
-        return noteRepository.save(note);
+
+        return noteRepository.saveAndFlush(note);
     }
 }
