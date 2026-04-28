@@ -9,8 +9,10 @@ import postanogov.dev.mynotesnew.repositories.NoteRepository;
 import postanogov.dev.mynotesnew.repositories.UserRepository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,10 +26,16 @@ public class NoteService {
 
         UserEntity managedUser = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        Integer minPos = noteRepository.findMinPositionByUserId(managedUser.getId());
+
+        // Если заметок еще нет, minPos будет null, тогда ставим 0.
+        // Если есть, вычитаем 1, чтобы стать "меньше всех" и оказаться выше.
+        int newPosition = (minPos != null) ? minPos - 1 : 0;
 
         Note note = Note.builder()
                 .content(content)
-                .user(managedUser) // Типы теперь идеально совпадают
+                .user(managedUser)
+                .position(newPosition)
                 .build();
 
         return noteRepository.save(note);
@@ -38,12 +46,11 @@ public class NoteService {
     }
 
     public List<Note> getUserNotesByEmail(String email) {
-        // 1. Находим пользователя, чтобы получить его актуальный ID (UUID)
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 2. Ищем заметки по строковому ID пользователя
-        return noteRepository.findAllByUserIdOrderByCreatedAtDesc(user.getId());
+        // Вызываем метод с сортировкой
+        return noteRepository.findAllByUserIdOrderByPositionAsc(user.getId());
     }
 
     @Transactional
@@ -72,5 +79,30 @@ public class NoteService {
         note.setContent(newContent);
 
         return noteRepository.saveAndFlush(note);
+    }
+
+    @Transactional
+    public void updateNotesOrder(List<String> noteIds, String email) {
+        // 1. Получаем все заметки пользователя одним списком
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Note> allUserNotes = noteRepository.findAllByUserIdOrderByPositionAsc(user.getId());
+
+        // 2. Создаем карту для быстрого доступа по ID
+        Map<String, Note> notesMap = allUserNotes.stream()
+                .collect(Collectors.toMap(Note::getId, note -> note));
+
+        // 3. Проходим по пришедшему списку ID и обновляем позиции
+        for (int i = 0; i < noteIds.size(); i++) {
+            String id = noteIds.get(i);
+            Note note = notesMap.get(id);
+            if (note != null) {
+                note.setPosition(i);
+            }
+        }
+
+        // 4. Сохраняем всё пачкой
+        noteRepository.saveAll(allUserNotes);
     }
 }

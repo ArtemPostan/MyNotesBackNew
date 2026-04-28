@@ -1,6 +1,8 @@
 package postanogov.dev.mynotesnew.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import postanogov.dev.mynotesnew.models.Note;
 import postanogov.dev.mynotesnew.models.UserEntity;
@@ -21,6 +23,13 @@ public interface NoteRepository extends JpaRepository<Note, String> {
      * Можно также искать по ID пользователя напрямую, если не хочется тянуть весь объект User.
      */
     List<Note> findAllByUserIdOrderByCreatedAtDesc(String userId);
+
+    List<Note> findAllByUserIdOrderByPositionAsc(String userId);
+
+    int countByUserId(String userId);
+
+    @Query("SELECT MIN(n.position) FROM Note n WHERE n.user.id = :userId")
+    Integer findMinPositionByUserId(@Param("userId") String userId);
 
 
 }

@@ -89,4 +89,10 @@ public class NoteController {
         return ResponseEntity.ok(updatedNote);
     }
 
+    @PatchMapping("/reorder")
+    public ResponseEntity<?> reorderNotes(@RequestBody List<String> noteIds, Authentication authentication) {
+        noteService.updateNotesOrder(noteIds, authentication.getName());
+        return ResponseEntity.ok().build();
+    }
+
 }

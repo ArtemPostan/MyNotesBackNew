@@ -25,4 +25,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .authorities("USER") // Даем базовую роль
                 .build();
     }
+
+
 }
