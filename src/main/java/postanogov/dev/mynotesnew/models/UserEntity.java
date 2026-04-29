@@ -30,6 +30,15 @@ public class UserEntity implements UserDetails {
 
     private String name;
 
+    @Column(name = "is_email_verified")
+    private Boolean isEmailVerified = false;
+
+    @Column(name = "verification_code")
+    private String verificationCode;
+
+    @Column(name = "code_generated_at")
+    private java.time.LocalDateTime codeGeneratedAt;
+
     // --- Методы UserDetails ---
 
     @Override
