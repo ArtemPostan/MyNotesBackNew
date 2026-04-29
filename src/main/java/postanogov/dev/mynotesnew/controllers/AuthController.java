@@ -5,61 +5,56 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import postanogov.dev.mynotesnew.models.UserEntity;
-import postanogov.dev.mynotesnew.repositories.UserAuthRepository;
 import postanogov.dev.mynotesnew.config.JwtUtils; // ИМПОРТИРУЕМ НАШ КЛАСС
 import org.springframework.http.ResponseEntity;
 import postanogov.dev.mynotesnew.repositories.UserRepository;
-import postanogov.dev.mynotesnew.dto.MailEvent;
 
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import org.springframework.kafka.core.KafkaTemplate;
+
+import postanogov.dev.mynotesnew.service.EmailService;
 
 @CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-
-    private final UserAuthRepository userAuthRepository;
     private final BCryptPasswordEncoder encoder;
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
-    private final KafkaTemplate<String, MailEvent> kafkaTemplate;
+    private final EmailService emailService;
+    //private final KafkaTemplate<String, MailEvent> kafkaTemplate;
 
 
-    // Обновляем конструктор для внедрения зависимостей
     public AuthController(
-            UserAuthRepository userAuthRepository,
+            UserRepository userRepository, // Внедряем один
             BCryptPasswordEncoder encoder,
             JwtUtils jwtUtils,
-            UserRepository userRepository,
-            KafkaTemplate<String, MailEvent> kafkaTemplate) {
+            EmailService emailService) {
 
-        this.userAuthRepository = userAuthRepository;
+        this.userRepository = userRepository;
         this.encoder = encoder;
         this.jwtUtils = jwtUtils;
-        this.userRepository = userRepository;
-        this.kafkaTemplate = kafkaTemplate;
+        this.emailService = emailService;
     }
 
     @PostMapping("/register")
     public UserEntity register(@RequestBody UserEntity user) {
         // Проверяем, есть ли уже такой пользователь (хорошая практика)
-        if (userAuthRepository.findByEmail(user.getEmail()).isPresent()) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             // Указываем, что это ошибка клиента (400)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email уже занят");
         }
 
         user.setId(UUID.randomUUID().toString());
         user.setPassword(encoder.encode(user.getPassword()));
-        return userAuthRepository.save(user);
+        return userRepository.save(user);
     }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody UserEntity loginData) {
-        return userAuthRepository.findByEmail(loginData.getEmail())
+        return userRepository.findByEmail(loginData.getEmail())
                 .map(user -> {
                     // Проверяем пароль
                     if (encoder.matches(loginData.getPassword(), user.getPassword())) {
@@ -80,6 +75,7 @@ public class AuthController {
                 })
                 .orElse(ResponseEntity.status(401).body("Пользователь не найден"));
     }
+
     @PostMapping("/send-code")
     public ResponseEntity<?> sendCode(@RequestBody Map<String, String> request) {
         String email = request.get("email");
@@ -95,9 +91,9 @@ public class AuthController {
         user.setVerificationCode(code);
         user.setCodeGeneratedAt(LocalDateTime.now());
         userRepository.save(user);
-
+        emailService.sendVerificationCode(email, code);
         // 4. Отправляем событие в Kafka топик "mail-notifications"
-        kafkaTemplate.send("mail-notifications", new MailEvent(email, code));
+        // kafkaTemplate.send("mail-notifications", new MailEvent(email, code));
 
         return ResponseEntity.ok(Map.of("message", "Код отправлен на почту"));
     }
