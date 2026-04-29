@@ -1,0 +1,16 @@
+### Отправка кода
+POST http://localhost:8080/api/auth/send-code
+Content-Type: application/json
+
+{
+  "email": "kwaka88@mail.ru"
+}
+
+### Верификация кода
+POST http://localhost:8080/api/auth/verify-code
+Content-Type: application/json
+
+{
+  "email": "kwaka88@mail.ru",
+  "code": "57571"
+}
