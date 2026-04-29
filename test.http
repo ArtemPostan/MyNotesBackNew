@@ -1,32 +1,46 @@
-POST http://localhost:8080/api/auth/register
+### Переменные
+@host = http://localhost:8080
+@email = kwaka88@mail.ru
+@password = 123
+
+### 1. Регистрация (просто создание в БД)
+POST {{host}}/api/auth/register
 Content-Type: application/json
 
 {
-  "email": "artem@example9.com",
-  "password": "my-secret-password",
+  "email": "{{email}}",
+  "password": "{{password}}",
   "name": "Artem Postan"
 }
-### Залогиниться
-POST http://localhost:8080/api/auth/login
+
+### 2. ОТПРАВКА КОДА (Вот здесь сработает Kafka!)
+POST {{host}}/api/auth/send-code
 Content-Type: application/json
 
 {
-"email": "artem@example7.com",
-"password": "my-secret-password"
+  "email": "{{email}}"
+}
+
+### 3. Логин
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
 }
 
 > {% client.global.set("auth_token", response.body.token); %}
 
+### 4. Список заметок (проверка токена)
+GET {{host}}/api/notes
+Authorization: Bearer {{auth_token}}
 
-### Создать заметку
-POST http://localhost:8080/api/notes
+### 5. Верификация кода (введи код из письма!)
+POST {{host}}/api/auth/verify-code
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNy5jb20iLCJpYXQiOjE3NzQ0MzA0MjIsImV4cCI6MTc3NDUxNjgyMn0.RpkzpuqrEAAJd9ajarCI3Nh3fiRhHsWWwghENlyA8Y3mhdngb5VKwswqMpp6JuIX
 
 {
-  "content": "Моя первая защищенная заметка!"
+  "email": "kwaka88@mail.ru",
+  "code": "12345"
 }
-
-### Список заметок
-GET http://localhost:8080/api/notes
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhcnRlbUBleGFtcGxlNy5jb20iLCJpYXQiOjE3NzQ0MzA0MjIsImV4cCI6MTc3NDUxNjgyMn0.RpkzpuqrEAAJd9ajarCI3Nh3fiRhHsWWwghENlyA8Y3mhdngb5VKwswqMpp6JuIX

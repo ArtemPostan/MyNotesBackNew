@@ -101,4 +101,32 @@ public class AuthController {
 
         return ResponseEntity.ok(Map.of("message", "Код отправлен на почту"));
     }
+
+    @PostMapping("/verify-code")
+    public ResponseEntity<?> verifyCode(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String code = request.get("code");
+
+        // 1. Ищем пользователя
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        // 2. Проверяем код
+        if (user.getVerificationCode() != null && user.getVerificationCode().equals(code)) {
+
+            // Проверка времени жизни кода (например, 5 минут)
+            if (user.getCodeGeneratedAt().isBefore(LocalDateTime.now().minusMinutes(5))) {
+                return ResponseEntity.status(400).body(Map.of("error", "Код просрочен"));
+            }
+
+            // 3. Обновляем статус
+            user.setIsEmailVerified(true);
+            user.setVerificationCode(null); // Стираем код после использования
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of("message", "Email успешно подтвержден!"));
+        } else {
+            return ResponseEntity.status(400).body(Map.of("error", "Неверный код подтверждения"));
+        }
+    }
 }
