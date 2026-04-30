@@ -52,4 +52,6 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         // 4. Всегда пропускаем запрос дальше по цепочке
         filterChain.doFilter(request, response);
     }
+
+
 }

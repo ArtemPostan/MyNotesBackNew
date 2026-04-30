@@ -39,6 +39,9 @@ public class UserEntity implements UserDetails {
     @Column(name = "code_generated_at")
     private java.time.LocalDateTime codeGeneratedAt;
 
+    @Column(name = "encryption_key")
+    private String encryptionKey;
+
     // --- Методы UserDetails ---
 
     @Override
