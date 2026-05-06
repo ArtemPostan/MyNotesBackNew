@@ -4,6 +4,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import postanogov.dev.mynotesnew.dto.AuthResponseDTO;
 import postanogov.dev.mynotesnew.models.UserEntity;
 import postanogov.dev.mynotesnew.config.JwtUtils;
 import org.springframework.http.ResponseEntity;
@@ -42,14 +43,24 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public UserEntity register(@RequestBody UserEntity user) {
+    public ResponseEntity register(@RequestBody UserEntity user) {
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email уже занят");
         }
 
         user.setId(UUID.randomUUID().toString());
         user.setPassword(encoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        user.setIsEmailVerified(false);
+
+        UserEntity savedUser = userRepository.save(user);
+        String token = jwtUtils.generateToken(savedUser.getEmail());
+        return ResponseEntity.ok(new AuthResponseDTO(
+                token,
+                savedUser.getEmail(),
+                savedUser.getName() != null ? savedUser.getName() : "Пользователь",
+                savedUser.getIsEmailVerified(),
+                null
+        ));
     }
 
     @PostMapping("/login")
@@ -57,49 +68,43 @@ public class AuthController {
         return userRepository.findByEmail(loginData.getEmail())
                 .map(user -> {
                     if (encoder.matches(loginData.getPassword(), user.getPassword())) {
-                        System.out.println("Ключ из базы: " + user.getEncryptionKey());
+
                         if (user.getEncryptionKey() == null || user.getEncryptionKey().isEmpty()) {
-                            System.out.println("Генерирую НОВЫЙ ключ...");
-                            // Используем DigestUtils для создания SHA-256 хеша из пароля
                             String secret = DigestUtils.sha256Hex(loginData.getPassword());
                             user.setEncryptionKey(secret);
                             userRepository.save(user);
                         }
-                        System.out.println("DEBUG: Key from DB for " + user.getEmail() + " is: " + user.getEncryptionKey());
 
                         String token = jwtUtils.generateToken(user.getEmail());
 
-                        return ResponseEntity.ok(Map.of(
-                                "token", token,
-                                "email", user.getEmail(),
-                                "name", user.getName() != null ? user.getName() : "Пользователь",
-                                "isEmailVerified", user.getIsEmailVerified(),
-                                "encryptionKey", user.getEncryptionKey()
+                        return ResponseEntity.ok(new AuthResponseDTO(
+                                token,
+                                user.getEmail(),
+                                user.getName() != null ? user.getName() : "Пользователь",
+                                user.getIsEmailVerified(),
+                                user.getEncryptionKey()
                         ));
                     } else {
-                        return ResponseEntity.status(401).body("Неверный пароль");
+                        return ResponseEntity.status(401).body(Map.of("error", "Неверный пароль"));
                     }
                 })
-                .orElse(ResponseEntity.status(401).body("Пользователь не найден"));
+                .orElse(ResponseEntity.status(401).body(Map.of("error", "Пользователь не найден")));
     }
 
     @PostMapping("/send-code")
     public ResponseEntity<?> sendCode(@RequestBody Map<String, String> request) {
         String email = request.get("email");
 
-        // 1. Ищем пользователя в БД
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
 
-        // 2. Генерируем 5-значный код
         String code = String.format("%05d", new Random().nextInt(100000));
 
-        // 3. Обновляем поля в БД (те, что добавили через SQL)
         user.setVerificationCode(code);
         user.setCodeGeneratedAt(LocalDateTime.now());
         userRepository.save(user);
         emailService.sendVerificationCode(email, code);
-        // 4. Отправляем событие в Kafka топик "mail-notifications"
+        // Отправляем событие в Kafka топик "mail-notifications"
         // kafkaTemplate.send("mail-notifications", new MailEvent(email, code));
 
         return ResponseEntity.ok(Map.of("message", "Код отправлен на почту"));

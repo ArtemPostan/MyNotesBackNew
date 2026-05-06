@@ -10,62 +10,65 @@ import org.springframework.web.bind.annotation.*;
 import postanogov.dev.mynotesnew.models.Note;
 import postanogov.dev.mynotesnew.models.UserEntity;
 import postanogov.dev.mynotesnew.service.NoteService;
+import postanogov.dev.mynotesnew.dto.NoteDTO;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.springframework.web.bind.annotation.*;
+
+
 
 @RestController
 @RequestMapping("/api/notes")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*") // Настрой под свой фронтенд, если нужно
+@CrossOrigin(origins = "*")
 public class NoteController {
 
     private final NoteService noteService;
 
-    /**
-     * Эндпоинт для сохранения заметки.
-     * @AuthenticationPrincipal позволяет получить текущего юзера из Spring Security.
-     */
-    @PostMapping
-    public ResponseEntity<Note> addNote(
-            @RequestBody Map<String, String> payload,
-            @AuthenticationPrincipal UserEntity user) {
-
-        // Если аннотация не сработала, берем email напрямую из контекста
-        String email;
-        if (user != null) {
-            email = user.getEmail();
-        } else {
-            email = SecurityContextHolder.getContext().getAuthentication().getName();
-        }
-
-        String content = payload.get("content");
-
-        // Теперь типы совпадают: String и String
-        Note savedNote = noteService.createNote(content, email);
-
-        return ResponseEntity.ok(savedNote);
+    private NoteDTO convertToDTO(Note note) {
+        return new NoteDTO(
+                note.getId(),
+                note.getContent(),
+                note.getPosition(),
+                note.getIsCompleted(),
+                note.getReminder(),
+                note.getUpdatedAt()
+        );
     }
 
-    /**
-     * Эндпоинт для получения всех заметок текущего пользователя.
-     */
-    @GetMapping
-    public ResponseEntity<List<Note>> getMyNotes(Authentication authentication) {
-        // authentication.getName() вернет email, который мы положили в токен
-        String email = authentication.getName();
+    @PostMapping
+    public ResponseEntity<NoteDTO> addNote(
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal UserEntity user,
+            Authentication authentication) {
+        String email = (user != null) ? user.getEmail() : authentication.getName();
+        String content = payload.get("content");
 
+        Note savedNote = noteService.createNote(content, email);
+        return ResponseEntity.ok(convertToDTO(savedNote));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<NoteDTO>> getMyNotes(Authentication authentication) {
+        String email = authentication.getName();
         List<Note> notes = noteService.getUserNotesByEmail(email);
-        return ResponseEntity.ok(notes);
+
+        List<NoteDTO> dtos = notes.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(dtos);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteNote(@PathVariable String id, Authentication authentication) {
-        String email = authentication.getName();
 
         try {
             // Передаем и ID, и email для проверки прав (чтобы юзер не удалил чужую заметку)
-            noteService.deleteNoteByIdAndUserEmail(id, email);
+            noteService.deleteNoteByIdAndUserEmail(id, authentication.getName());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -74,19 +77,15 @@ public class NoteController {
     }
 
     @PatchMapping("/{id}")
-    public ResponseEntity<Note> updateNote(
+    public ResponseEntity<NoteDTO> updateNote(
             @PathVariable String id,
-            @RequestBody Map<String, String> payload,
+            @RequestBody NoteDTO noteUpdate,
             Authentication authentication) {
 
         String email = authentication.getName();
-        String newContent = payload.get("content");
+        Note updatedNote = noteService.updateNote(id, noteUpdate, email);
 
-        // Вызываем сервис и ПОЛУЧАЕМ обновленный объект
-        Note updatedNote = noteService.updateNoteContent(id, newContent, email);
-
-        // Возвращаем объект (статус 200 OK) вместо noContent()
-        return ResponseEntity.ok(updatedNote);
+        return ResponseEntity.ok(convertToDTO(updatedNote));
     }
 
     @PatchMapping("/reorder")

@@ -13,6 +13,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -61,6 +62,12 @@ public class Note {
 
     @Column(name = "position")
     private Integer position;
+
+    @Column(name = "is_completed")
+    private Boolean isCompleted = false;
+
+    @Column(name = "reminder")
+    private java.time.LocalDateTime reminder;
 
     public void setPosition(Integer position) {
         this.position = position;
