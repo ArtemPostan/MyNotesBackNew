@@ -15,6 +15,7 @@ public class NoteDTO {
     private String content;
     private Integer position;
     private Boolean isCompleted;
+    private Boolean isCollapsed;
     private LocalDateTime reminder;
     private Instant updatedAt;
 }

@@ -69,6 +69,9 @@ public class Note {
     @Column(name = "reminder")
     private java.time.LocalDateTime reminder;
 
+    @Column(name = "is_collapsed")
+    private Boolean isCollapsed = false;
+
     public void setPosition(Integer position) {
         this.position = position;
     }

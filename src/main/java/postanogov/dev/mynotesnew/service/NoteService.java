@@ -85,6 +85,10 @@ public class NoteService {
             note.setContent(dto.getContent());
         }
 
+        if (dto.getIsCollapsed() != null) {
+            note.setIsCollapsed(dto.getIsCollapsed());
+        }
+
         // Обновляем статус "Выполнено" (та самая галочка)
         if (dto.getIsCompleted() != null) {
             note.setIsCompleted(dto.getIsCompleted());

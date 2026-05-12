@@ -34,6 +34,7 @@ public class NoteController {
                 note.getContent(),
                 note.getPosition(),
                 note.getIsCompleted(),
+                note.getIsCollapsed(),
                 note.getReminder(),
                 note.getUpdatedAt()
         );
