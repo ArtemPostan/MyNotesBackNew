@@ -33,10 +33,15 @@ public class NoteService {
         // Если есть, вычитаем 1, чтобы стать "меньше всех" и оказаться выше.
         int newPosition = (minPos != null) ? minPos - 1 : 0;
 
+        java.time.Instant now = java.time.Instant.now();
+
         Note note = Note.builder()
                 .content(content)
                 .user(managedUser)
                 .position(newPosition)
+                .updatedAt(now)
+                .isCollapsed(false)
+                .isCompleted(false)
                 .build();
 
         return noteRepository.save(note);
@@ -80,9 +85,17 @@ public class NoteService {
         }
 
         // 3. Частичное обновление (Partial Update)
+
+        // Переменная для отслеживания реального изменения текста
+        boolean contentActuallyChanged = false;
+
         // Обновляем текст, если он пришел
         if (dto.getContent() != null) {
-            note.setContent(dto.getContent());
+            // Проверяем, отличается ли новый текст от того, что уже в базе
+            if (!dto.getContent().equals(note.getContent())) {
+                note.setContent(dto.getContent());
+                contentActuallyChanged = true;
+            }
         }
 
         if (dto.getIsCollapsed() != null) {
@@ -102,6 +115,11 @@ public class NoteService {
         // Обновляем позицию, если нужно (хотя для этого есть отдельный метод reorder)
         if (dto.getPosition() != null) {
             note.setPosition(dto.getPosition());
+        }
+
+        // 3.5 Обновляем время редактирования ТОЛЬКО если текст был изменен
+        if (contentActuallyChanged) {
+            note.setUpdatedAt(java.time.Instant.now());
         }
 
         // 4. Сохраняем и возвращаем сущность (контроллер сам превратит её в DTO)
