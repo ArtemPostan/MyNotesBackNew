@@ -12,5 +12,4 @@ public class AuthResponseDTO {
     private String email;
     private String name;
     private Boolean isEmailVerified;
-    private String encryptionKey;
 }

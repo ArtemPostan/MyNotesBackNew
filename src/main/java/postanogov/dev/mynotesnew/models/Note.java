@@ -62,7 +62,7 @@ public class Note {
     @Column(name = "position")
     private Integer position;
 
-    @Column(name = "is_completed")
+    @Column(name = "is_completed", nullable = false)
     private Boolean isCompleted = false;
 
     @Column(name = "reminder")

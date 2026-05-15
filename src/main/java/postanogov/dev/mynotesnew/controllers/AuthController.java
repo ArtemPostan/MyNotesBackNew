@@ -58,8 +58,8 @@ public class AuthController {
                 token,
                 savedUser.getEmail(),
                 savedUser.getName() != null ? savedUser.getName() : "Пользователь",
-                savedUser.getIsEmailVerified(),
-                null
+                savedUser.getIsEmailVerified()
+
         ));
     }
 
@@ -81,8 +81,8 @@ public class AuthController {
                                 token,
                                 user.getEmail(),
                                 user.getName() != null ? user.getName() : "Пользователь",
-                                user.getIsEmailVerified(),
-                                user.getEncryptionKey()
+                                user.getIsEmailVerified()
+
                         ));
                     } else {
                         return ResponseEntity.status(401).body(Map.of("error", "Неверный пароль"));

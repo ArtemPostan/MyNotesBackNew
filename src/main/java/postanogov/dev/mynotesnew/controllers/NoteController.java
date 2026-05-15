@@ -5,20 +5,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import postanogov.dev.mynotesnew.models.Note;
 import postanogov.dev.mynotesnew.models.UserEntity;
 import postanogov.dev.mynotesnew.service.NoteService;
 import postanogov.dev.mynotesnew.dto.NoteDTO;
+import postanogov.dev.mynotesnew.service.EncryptionService; // Добавь импорт
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import org.springframework.web.bind.annotation.*;
-
-
 
 @RestController
 @RequestMapping("/api/notes")
@@ -27,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class NoteController {
 
     private final NoteService noteService;
+    private final EncryptionService encryptionService; // Добавь инжект
 
     private NoteDTO convertToDTO(Note note) {
         return new NoteDTO(
@@ -45,16 +42,25 @@ public class NoteController {
             @RequestBody Map<String, String> payload,
             @AuthenticationPrincipal UserEntity user,
             Authentication authentication) {
+
         String email = (user != null) ? user.getEmail() : authentication.getName();
         String content = payload.get("content");
 
+        // 1. Создаем и сохраняем (сервис там внутри шифрует)
         Note savedNote = noteService.createNote(content, email);
+
+        // 2. ВАЖНО: Если сервис вернул зашифрованную ноду,
+        // нам нужно расшифровать content перед отправкой в DTO,
+        // чтобы пользователь сразу увидел нормальный текст.
+        // (Если ты уже добавил дешифровку в конец createNote в сервисе, это поле будет чистым)
+
         return ResponseEntity.ok(convertToDTO(savedNote));
     }
 
     @GetMapping
     public ResponseEntity<List<NoteDTO>> getMyNotes(Authentication authentication) {
         String email = authentication.getName();
+        // Метод getUserNotesByEmail уже должен возвращать расшифрованные заметки
         List<Note> notes = noteService.getUserNotesByEmail(email);
 
         List<NoteDTO> dtos = notes.stream()
@@ -66,9 +72,7 @@ public class NoteController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteNote(@PathVariable String id, Authentication authentication) {
-
         try {
-            // Передаем и ID, и email для проверки прав (чтобы юзер не удалил чужую заметку)
             noteService.deleteNoteByIdAndUserEmail(id, authentication.getName());
             return ResponseEntity.ok().build();
         } catch (Exception e) {
@@ -84,6 +88,7 @@ public class NoteController {
             Authentication authentication) {
 
         String email = authentication.getName();
+        // Сервис возвращает обновленную и РАСШИФРОВАННУЮ заметку
         Note updatedNote = noteService.updateNote(id, noteUpdate, email);
 
         return ResponseEntity.ok(convertToDTO(updatedNote));
@@ -94,5 +99,4 @@ public class NoteController {
         noteService.updateNotesOrder(noteIds, authentication.getName());
         return ResponseEntity.ok().build();
     }
-
 }

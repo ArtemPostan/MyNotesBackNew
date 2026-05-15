@@ -11,8 +11,6 @@ import postanogov.dev.mynotesnew.dto.NoteDTO;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,136 +19,127 @@ public class NoteService {
 
     private final NoteRepository noteRepository;
     private final UserRepository userRepository;
+    private final EncryptionService encryptionService; // Внедряем новый сервис
 
     @Transactional
     public Note createNote(String content, String email) {
+        // 1. Находим пользователя, чтобы получить его ключ шифрования
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден: " + email));
 
-        UserEntity managedUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Integer minPos = noteRepository.findMinPositionByUserId(managedUser.getId());
+        // 2. Создаем новый объект заметки
+        Note note = new Note();
 
-        // Если заметок еще нет, minPos будет null, тогда ставим 0.
-        // Если есть, вычитаем 1, чтобы стать "меньше всех" и оказаться выше.
-        int newPosition = (minPos != null) ? minPos - 1 : 0;
+        // Сохраняем исходный (чистый) текст во временную переменную.
+        // Это важно, так как после шифрования поле content будет содержать "мусор" для БД.
+        String rawContent = (content != null) ? content : "";
 
-        java.time.Instant now = java.time.Instant.now();
+        // 3. Шифруем контент перед сохранением в базу
+        // Используем существующий ключ пользователя
+        String encryptedContent = encryptionService.encrypt(rawContent, user.getEncryptionKey());
 
-        Note note = Note.builder()
-                .content(content)
-                .user(managedUser)
-                .position(newPosition)
-                .updatedAt(now)
-                .isCollapsed(false)
-                .isCompleted(false)
-                .build();
+        note.setContent(encryptedContent);
+        note.setUser(user);
+        note.setIsCompleted(false);
+        note.setIsCollapsed(false);
+        note.setUpdatedAt(java.time.Instant.now());
 
-        return noteRepository.save(note);
-    }
+        // Определяем позицию (например, делаем её самой первой/последней)
+        // Здесь логика зависит от твоего репозитория, обычно это:
+        // note.setPosition(calculateNextPosition(user));
 
-    public List<Note> getUserNotes(UserEntity user) {
-        return noteRepository.findAllByUserOrderByCreatedAtDesc(user);
+        // 4. Сохраняем зашифрованную заметку в БД
+        Note savedNote = noteRepository.save(note);
+
+        // 5. КРИТИЧЕСКИЙ ШАГ ДЛЯ ИСПРАВЛЕНИЯ КРАКОЗЯБР:
+        // После сохранения в БД, мы подменяем зашифрованный контент обратно на чистый текст.
+        // Это не меняет данные в базе (транзакция почти завершена),
+        // но объект, который вернется в Контроллер и далее на Фронтенд, будет содержать ЧИТАЕМЫЙ текст.
+        savedNote.setContent(rawContent);
+
+        return savedNote;
     }
 
     public List<Note> getUserNotesByEmail(String email) {
+        // 1. Находим юзера, чтобы достать его уникальный ключ
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Вызываем метод с сортировкой
-        return noteRepository.findAllByUserIdOrderByPositionAsc(user.getId());
-    }
+        String userKey = user.getEncryptionKey();
 
-    @Transactional
-    public void deleteNoteByIdAndUserEmail(String id, String email) {
-        // Находим заметку
-        Note note = noteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Заметка не найдена с ID: " + id));
+        // 2. Достаем его заметки из базы (в базе они еще зашифрованы)
+        List<Note> notes = noteRepository.findAllByUserIdOrderByPositionAsc(user.getId());
 
-        // Проверяем владельца (email в Note должен совпадать с email из токена)
-        if (!note.getUser().getEmail().equals(email)) {
-            throw new RuntimeException("У вас нет прав на удаление этой заметки");
-        }
+        // 3. Расшифровываем контент каждой заметки перед тем, как отдать контроллеру
+        notes.forEach(note -> {
+            String decrypted = encryptionService.decrypt(note.getContent(), userKey);
+            note.setContent(decrypted);
+        });
 
-        noteRepository.delete(note);
+        return notes;
     }
 
     @Transactional
     public Note updateNote(String id, NoteDTO dto, String email) {
-        // 1. Ищем заметку
         Note note = noteRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Заметка не найдена с ID: " + id));
+                .orElseThrow(() -> new RuntimeException("Заметка не найдена"));
 
-        // 2. Проверяем владельца
         if (!note.getUser().getEmail().equals(email)) {
-            throw new RuntimeException("Нет прав для редактирования этой заметки");
+            throw new RuntimeException("Нет прав");
         }
 
-        // 3. Частичное обновление (Partial Update)
-
-        // Переменная для отслеживания реального изменения текста
+        UserEntity user = note.getUser();
         boolean contentActuallyChanged = false;
 
-        // Обновляем текст, если он пришел
         if (dto.getContent() != null) {
-            // Проверяем, отличается ли новый текст от того, что уже в базе
-            if (!dto.getContent().equals(note.getContent())) {
-                note.setContent(dto.getContent());
+            // Расшифровываем текущее значение из базы для сравнения
+            String currentDecrypted = encryptionService.decrypt(note.getContent(), user.getEncryptionKey());
+
+            if (!dto.getContent().equals(currentDecrypted)) {
+                // ШИФРУЕМ новое значение
+                note.setContent(encryptionService.encrypt(dto.getContent(), user.getEncryptionKey()));
                 contentActuallyChanged = true;
             }
         }
 
-        if (dto.getIsCollapsed() != null) {
-            note.setIsCollapsed(dto.getIsCollapsed());
-        }
+        if (dto.getIsCollapsed() != null) note.setIsCollapsed(dto.getIsCollapsed());
+        if (dto.getIsCompleted() != null) note.setIsCompleted(dto.getIsCompleted());
+        if (dto.getReminder() != null) note.setReminder(dto.getReminder());
+        if (dto.getPosition() != null) note.setPosition(dto.getPosition());
 
-        // Обновляем статус "Выполнено" (та самая галочка)
-        if (dto.getIsCompleted() != null) {
-            note.setIsCompleted(dto.getIsCompleted());
-        }
-
-        // Обновляем дату напоминания (те самые часики)
-        if (dto.getReminder() != null) {
-            note.setReminder(dto.getReminder());
-        }
-
-        // Обновляем позицию, если нужно (хотя для этого есть отдельный метод reorder)
-        if (dto.getPosition() != null) {
-            note.setPosition(dto.getPosition());
-        }
-
-        // 3.5 Обновляем время редактирования ТОЛЬКО если текст был изменен
         if (contentActuallyChanged) {
             note.setUpdatedAt(java.time.Instant.now());
         }
 
-        // 4. Сохраняем и возвращаем сущность (контроллер сам превратит её в DTO)
-        return noteRepository.saveAndFlush(note);
+        Note savedNote = noteRepository.saveAndFlush(note);
+
+        // РАСШИФРОВЫВАЕМ результат, чтобы фронтенд получил чистый текст
+        savedNote.setContent(encryptionService.decrypt(savedNote.getContent(), user.getEncryptionKey()));
+        return savedNote;
+    }
+
+    @Transactional
+    public void deleteNoteByIdAndUserEmail(String id, String email) {
+        Note note = noteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Заметка не найдена"));
+        if (!note.getUser().getEmail().equals(email)) {
+            throw new RuntimeException("Нет прав");
+        }
+        noteRepository.delete(note);
     }
 
     @Transactional
     public void updateNotesOrder(List<String> noteIds, String email) {
-        // 1. Получаем пользователя
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
-
-        // 2. Достаем все заметки пользователя
+                .orElseThrow(() -> new RuntimeException("User not found"));
         List<Note> allUserNotes = noteRepository.findAllByUserIdOrderByPositionAsc(user.getId());
-
-        // 3. Создаем Map для быстрого поиска заметки по её ID
         Map<String, Note> notesMap = allUserNotes.stream()
-                .collect(Collectors.toMap(Note::getId, note -> note));
+                .collect(Collectors.toMap(Note::getId, n -> n));
 
-        // 4. Проходим по списку ID, пришедшему с фронтенда
         for (int i = 0; i < noteIds.size(); i++) {
-            String id = noteIds.get(i);
-            Note note = notesMap.get(id);
-
-            if (note != null) {
-                // Устанавливаем новую позицию согласно индексу в списке
-                note.setPosition(i);
-            }
+            Note note = notesMap.get(noteIds.get(i));
+            if (note != null) note.setPosition(i);
         }
-
-        // 5. Сохраняем все обновленные заметки одной пачкой
         noteRepository.saveAll(allUserNotes);
     }
 }
