@@ -202,4 +202,42 @@ public class AuthController {
             return ResponseEntity.status(400).body(Map.of("error", "Неверный код подтверждения"));
         }
     }
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestHeader("X-Auth-Token") String tokenHeader,
+            @RequestBody Map<String, String> request) {
+
+        // 1. Извлекаем чистый токен (убираем префикс "Bearer ")
+        if (tokenHeader == null || !tokenHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Токен отсутствует"));
+        }
+        String token = tokenHeader.substring(7);
+
+        try {
+            // 2. Достаем email из токена с помощью jwtUtils
+            String email = jwtUtils.getEmailFromToken(token); // Убедитесь, что имя метода совпадает с вашим в JwtUtils
+
+            // 3. Ищем пользователя в БД
+            UserEntity user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Пользователь не найден"));
+
+            // 4. Достаем новое имя из тела запроса и валидируем его
+            String newName = request.get("name");
+            if (newName == null || newName.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", "Имя не может быть пустым"));
+            }
+
+            // 5. Сохраняем изменения
+            user.setName(newName.trim());
+            userRepository.save(user);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Профиль успешно обновлен",
+                    "name", user.getName()
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Невалидный токен"));
+        }
+    }
 }

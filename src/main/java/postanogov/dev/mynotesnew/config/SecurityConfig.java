@@ -55,6 +55,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
 
         configuration.setAllowedHeaders(List.of(
+                "Authorization",
                 "X-Auth-Token",
                 "x-auth-token",
                 "Content-Type",

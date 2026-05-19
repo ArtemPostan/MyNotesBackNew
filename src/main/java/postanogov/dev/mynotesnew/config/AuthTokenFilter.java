@@ -24,32 +24,37 @@ public class AuthTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         try {
-            String headerAuth = request.getHeader("X-Auth-Token");
+            // 1. Пытаемся достать токен из стандартного заголовка
+            String headerAuth = request.getHeader("Authorization");
 
+            // 2. Если его там нет, проверяем ваш кастомный X-Auth-Token
+            if (headerAuth == null || headerAuth.isEmpty()) {
+                headerAuth = request.getHeader("X-Auth-Token");
+            }
+
+            // 3. Если нашли хоть какой-то заголовок и он начинается с Bearer
             if (headerAuth != null && headerAuth.startsWith("Bearer ")) {
                 String jwt = headerAuth.substring(7);
 
                 if (jwtUtils.validateToken(jwt)) {
                     String email = jwtUtils.getEmailFromToken(jwt);
 
-                    // 3. Загружаем пользователя и устанавливаем аутентификацию
+                    // Загружаем пользователя и устанавливаем аутентификацию
                     UserDetails userDetails = userDetailsService.loadUserByUsername(email);
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    // Это "магическая" строка, которая авторизует пользователя в системе
+                    // Авторизуем пользователя в системе
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             }
         } catch (Exception e) {
-            // Вместо System.out используй логгер или оставь пустым,
-            // так как Spring Security сам вернет 403, если контекст пуст.
-            logger.error("Не удалось установить аутентификацию пользователя: {}");
+            logger.error("Не удалось установить аутентификацию пользователя", e);
         }
 
-        // 4. Всегда пропускаем запрос дальше по цепочке
+        // Всегда пропускаем запрос дальше по цепочке
         filterChain.doFilter(request, response);
     }
 
