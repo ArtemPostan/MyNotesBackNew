@@ -71,6 +71,9 @@ public class Note {
     @Column(name = "is_collapsed")
     private Boolean isCollapsed = false;
 
+    @Column(name = "folder_id")
+    private String folderId;
+
     public void setPosition(Integer position) {
         this.position = position;
     }

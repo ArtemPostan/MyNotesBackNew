@@ -33,7 +33,8 @@ public class NoteController {
                 note.getIsCompleted(),
                 note.getIsCollapsed(),
                 note.getReminder(),
-                note.getUpdatedAt()
+                note.getUpdatedAt(),
+                note.getFolderId()
         );
     }
 
@@ -45,9 +46,10 @@ public class NoteController {
 
         String email = (user != null) ? user.getEmail() : authentication.getName();
         String content = payload.get("content");
+        String folderId = payload.get("folderId");
 
         // 1. Создаем и сохраняем (сервис там внутри шифрует)
-        Note savedNote = noteService.createNote(content, email);
+        Note savedNote = noteService.createNote(content, email, folderId);
 
         // 2. ВАЖНО: Если сервис вернул зашифрованную ноду,
         // нам нужно расшифровать content перед отправкой в DTO,

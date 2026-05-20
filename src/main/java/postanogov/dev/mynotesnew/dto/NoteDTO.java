@@ -18,4 +18,5 @@ public class NoteDTO {
     private Boolean isCollapsed;
     private LocalDateTime reminder;
     private Instant updatedAt;
+    private String folderId;
 }

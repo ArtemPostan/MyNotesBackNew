@@ -22,20 +22,17 @@ public class NoteService {
     private final EncryptionService encryptionService; // Внедряем новый сервис
 
     @Transactional
-    public Note createNote(String content, String email) {
-        // 1. Находим пользователя, чтобы получить его ключ шифрования
+    public Note createNote(String content, String email, String folderId) { // ИСПРАВЛЕНО: добавили folderId
+        // 1. Находим пользователя
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Пользователь не найден: " + email));
 
         // 2. Создаем новый объект заметки
         Note note = new Note();
 
-        // Сохраняем исходный (чистый) текст во временную переменную.
-        // Это важно, так как после шифрования поле content будет содержать "мусор" для БД.
         String rawContent = (content != null) ? content : "";
 
-        // 3. Шифруем контент перед сохранением в базу
-        // Используем существующий ключ пользователя
+        // 3. Шифруем контент
         String encryptedContent = encryptionService.encrypt(rawContent, user.getEncryptionKey());
 
         note.setContent(encryptedContent);
@@ -44,17 +41,15 @@ public class NoteService {
         note.setIsCollapsed(false);
         note.setUpdatedAt(java.time.Instant.now());
 
-        // Определяем позицию (например, делаем её самой первой/последней)
-        // Здесь логика зависит от твоего репозитория, обычно это:
-        // note.setPosition(calculateNextPosition(user));
+        // ДОБАВЛЕНО: сохраняем id папки, если он пришел с фронтенда
+        if (folderId != null && !folderId.trim().isEmpty()) {
+            note.setFolderId(folderId);
+        }
 
         // 4. Сохраняем зашифрованную заметку в БД
         Note savedNote = noteRepository.save(note);
 
-        // 5. КРИТИЧЕСКИЙ ШАГ ДЛЯ ИСПРАВЛЕНИЯ КРАКОЗЯБР:
-        // После сохранения в БД, мы подменяем зашифрованный контент обратно на чистый текст.
-        // Это не меняет данные в базе (транзакция почти завершена),
-        // но объект, который вернется в Контроллер и далее на Фронтенд, будет содержать ЧИТАЕМЫЙ текст.
+        // 5. Возвращаем чистый текст для контроллера
         savedNote.setContent(rawContent);
 
         return savedNote;
@@ -92,11 +87,9 @@ public class NoteService {
         boolean contentActuallyChanged = false;
 
         if (dto.getContent() != null) {
-            // Расшифровываем текущее значение из базы для сравнения
             String currentDecrypted = encryptionService.decrypt(note.getContent(), user.getEncryptionKey());
 
             if (!dto.getContent().equals(currentDecrypted)) {
-                // ШИФРУЕМ новое значение
                 note.setContent(encryptionService.encrypt(dto.getContent(), user.getEncryptionKey()));
                 contentActuallyChanged = true;
             }
@@ -107,13 +100,17 @@ public class NoteService {
         if (dto.getReminder() != null) note.setReminder(dto.getReminder());
         if (dto.getPosition() != null) note.setPosition(dto.getPosition());
 
+        // ДОБАВЛЕНО: возможность изменять папку заметки при обновлении
+        if (dto.getFolderId() != null) {
+            note.setFolderId(dto.getFolderId().trim().isEmpty() ? null : dto.getFolderId());
+        }
+
         if (contentActuallyChanged) {
             note.setUpdatedAt(java.time.Instant.now());
         }
 
         Note savedNote = noteRepository.saveAndFlush(note);
 
-        // РАСШИФРОВЫВАЕМ результат, чтобы фронтенд получил чистый текст
         savedNote.setContent(encryptionService.decrypt(savedNote.getContent(), user.getEncryptionKey()));
         return savedNote;
     }

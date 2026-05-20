@@ -26,6 +26,10 @@ public interface NoteRepository extends JpaRepository<Note, String> {
 
     List<Note> findAllByUserIdOrderByPositionAsc(String userId);
 
+    List<Note> findByUserEmailAndFolderId(String userEmail, String folderId);
+
+    List<Note> findByUserEmailAndFolderIdIsNull(String userEmail);
+
     int countByUserId(String userId);
 
     @Query("SELECT MIN(n.position) FROM Note n WHERE n.user.id = :userId")
