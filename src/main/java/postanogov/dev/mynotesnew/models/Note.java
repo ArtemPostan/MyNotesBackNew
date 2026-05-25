@@ -41,7 +41,7 @@ public class Note {
     @Column(columnDefinition = "Utf8", nullable = false)
     private String content;
 
-    // Связь с пользователем.
+    // Связь с пользователем.Тест
     // В YDB мы будем хранить user_id как часть ключа или обычное поле.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
